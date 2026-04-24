@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.TravelWeatherAssistant" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#102A43</item>
+        <item name="colorPrimaryVariant">#243B53</item>
+        <item name="colorSecondary">#F6C85F</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:navigationBarColor">#102A43</item>
+    </style>
+</resources>
