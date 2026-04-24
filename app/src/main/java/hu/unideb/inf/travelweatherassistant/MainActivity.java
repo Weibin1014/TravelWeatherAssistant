@@ -48,14 +48,36 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+/*
+ * MainActivity is the main screen of the app.
+ *
+ * It connects all important Android course topics:
+ * 1. UI: reads and updates views from activity_main.xml with ViewBinding.
+ * 2. Location: gets the user's current GPS/network location.
+ * 3. Network/API: calls Open-Meteo APIs through WeatherRepository and Retrofit.
+ * 4. Persistent storage: saves favorite cities into a Room database.
+ * 5. Communication solution: shows Android notifications with travel advice.
+ *
+ * The activity intentionally delegates API details to WeatherRepository and
+ * weather-code logic to WeatherInterpreter, so the code is easier to explain.
+ */
 public class MainActivity extends AppCompatActivity {
+    // Android notifications on version 8.0+ must belong to a channel.
     private static final String NOTIFICATION_CHANNEL_ID = "travel_weather_alerts";
+
+    // A fixed id lets the app update/replace the same notification if needed.
     private static final int WEATHER_NOTIFICATION_ID = 101;
 
-    // ViewBinding gives type-safe access to the XML views in activity_main.xml.
+    // ViewBinding gives type-safe access to XML views without using findViewById many times.
     private ActivityMainBinding binding;
+
+    // Repository hides the Retrofit setup and keeps API-calling code outside the Activity.
     private WeatherRepository weatherRepository;
+
+    // Room database object used to store and read favorite cities.
     private FavoriteCityDatabase database;
+
+    // RecyclerView adapter responsible for drawing the favorite city list.
     private FavoriteCityAdapter favoriteCityAdapter;
 
     // Room database operations must not run on the main UI thread.
@@ -70,7 +92,13 @@ public class MainActivity extends AppCompatActivity {
     private double currentTemperature = 0.0;
     private String currentAdvice = "Travel advice will be generated from real weather data.";
 
-    // Handles the result of the runtime location permission dialog.
+    /*
+     * Handles the result of the runtime location permission dialog.
+     *
+     * Android considers location a dangerous permission. This means declaring it
+     * in AndroidManifest.xml is not enough; the user must also approve it while
+     * the app is running.
+     */
     private final ActivityResultLauncher<String[]> locationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(), result -> {
                 Boolean fine = result.get(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -82,7 +110,12 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-    // Android 13+ requires notification permission before showing app notifications.
+    /*
+     * Handles notification permission.
+     *
+     * On Android 13/API 33 and newer, apps must ask before posting notifications.
+     * On older versions this permission is not required, but the same button still works.
+     */
     private final ActivityResultLauncher<String> notificationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 if (granted) {
@@ -95,9 +128,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Inflate the XML layout and prepare the screen.
         binding = ActivityMainBinding.inflate(getLayoutInflater());
+
+        // EdgeToEdge makes the app draw behind system bars for a modern layout.
         EdgeToEdge.enable(this);
         setContentView(binding.getRoot());
+
+        // Add padding equal to the status/navigation bars so content is not hidden.
         ViewCompat.setOnApplyWindowInsetsListener(binding.main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -105,6 +144,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         weatherRepository = new WeatherRepository();
+
+        // Build the Room database. The database file is stored locally on the device.
         database = Room.databaseBuilder(this, FavoriteCityDatabase.class, "travel_weather_db")
                 .fallbackToDestructiveMigration(true)
                 .build();
@@ -115,6 +156,12 @@ public class MainActivity extends AppCompatActivity {
         loadWeatherForCity(currentCityName, currentCountry, currentLatitude, currentLongitude);
     }
 
+    /*
+     * Prepares the favorite city RecyclerView.
+     *
+     * The RecyclerView displays Room data. LiveData keeps it synchronized:
+     * when we insert or delete a city, Room emits a new list automatically.
+     */
     private void setupFavoritesList() {
         // The adapter displays saved cities and reloads weather when a favorite is tapped.
         favoriteCityAdapter = new FavoriteCityAdapter(city ->
@@ -148,6 +195,11 @@ public class MainActivity extends AppCompatActivity {
         itemTouchHelper.attachToRecyclerView(binding.favoritesRecyclerView);
     }
 
+    /*
+     * Connects UI buttons to Java methods.
+     *
+     * This is the event-listener part of the UI topic from the course.
+     */
     private void setupButtons() {
         binding.currentLocationButton.setOnClickListener(v -> requestLocationWeather());
         binding.searchButton.setOnClickListener(v -> searchCity());
@@ -155,6 +207,13 @@ public class MainActivity extends AppCompatActivity {
         binding.notifyButton.setOnClickListener(v -> requestNotificationAndShow());
     }
 
+    /*
+     * Searches a city by name.
+     *
+     * Weather APIs usually need latitude and longitude, not a city string.
+     * Therefore this method first calls the geocoding API, receives coordinates,
+     * and then calls loadWeatherForCity() with those coordinates.
+     */
     private void searchCity() {
         String query = binding.searchCityEditText.getText().toString().trim();
         if (query.isEmpty()) {
@@ -188,6 +247,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /*
+     * Starts the "weather by current location" flow.
+     *
+     * If permission is missing, the app asks for it. If permission already exists,
+     * it directly tries to read the device location.
+     */
     private void requestLocationWeather() {
         // Location is a dangerous permission, so it must be requested at runtime.
         if (!hasLocationPermission()) {
@@ -200,11 +265,23 @@ public class MainActivity extends AppCompatActivity {
         loadWeatherFromDeviceLocation();
     }
 
+    /*
+     * Checks whether the app can access at least one type of location.
+     *
+     * Fine location is GPS-level precision. Coarse location is approximate
+     * network/cell-tower precision. Either is enough for a weather forecast.
+     */
     private boolean hasLocationPermission() {
         return ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
                 || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
+    /*
+     * Reads the device location and loads weather for it.
+     *
+     * The method first tries "last known location" because it is fast and saves battery.
+     * If no cached location exists, it requests one fresh location update.
+     */
     private void loadWeatherFromDeviceLocation() {
         if (!hasLocationPermission()) {
             showStatus("Location permission is required for GPS weather.");
@@ -227,6 +304,12 @@ public class MainActivity extends AppCompatActivity {
         requestSingleLocationUpdate(locationManager);
     }
 
+    /*
+     * Finds the best cached location from all enabled providers.
+     *
+     * Android can have several providers, for example GPS_PROVIDER and NETWORK_PROVIDER.
+     * The smaller accuracy value means the location is more precise.
+     */
     private Location getBestLastKnownLocation(LocationManager locationManager) {
         // Try every enabled provider and keep the most accurate last known location.
         List<String> providers = locationManager.getProviders(true);
@@ -244,6 +327,13 @@ public class MainActivity extends AppCompatActivity {
         return bestLocation;
     }
 
+    /*
+     * Requests one new location update.
+     *
+     * This is used only when the device has no cached location. In a real production
+     * app we might keep listening for multiple updates, but for this course project
+     * one update is enough to demonstrate localization.
+     */
     private void requestSingleLocationUpdate(LocationManager locationManager) {
         List<String> providers = locationManager.getProviders(true);
         if (providers.isEmpty()) {
@@ -269,6 +359,14 @@ public class MainActivity extends AppCompatActivity {
         locationManager.requestSingleUpdate(provider, listener, Looper.getMainLooper());
     }
 
+    /*
+     * Loads weather from the weather API for known coordinates.
+     *
+     * This method is used by three different features:
+     * 1. Default Budapest weather on app startup.
+     * 2. Searched city weather after geocoding.
+     * 3. Current GPS location weather.
+     */
     private void loadWeatherForCity(String cityName, String country, double latitude, double longitude) {
         currentCityName = cityName;
         currentCountry = country;
@@ -299,6 +397,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /*
+     * Updates the UI after a successful weather response.
+     *
+     * The raw API response contains numbers such as weather_code. The app converts
+     * those numbers into readable condition text, icons and travel advice.
+     */
     private void renderWeather(String cityName, String country, WeatherResponse.CurrentWeather current) {
         // Convert API values into user-friendly text, icons and travel advice.
         currentCondition = WeatherInterpreter.describeCode(current.weatherCode);
@@ -318,6 +422,12 @@ public class MainActivity extends AppCompatActivity {
         binding.adviceTextView.setText(currentAdvice);
     }
 
+    /*
+     * Saves the currently displayed city to the Room database.
+     *
+     * The app also saves a short snapshot of the latest weather, so the favorites
+     * list can show temperature and condition without immediately calling the API.
+     */
     private void saveCurrentCity() {
         // Store the current weather summary so the favorites list can show useful details.
         FavoriteCity favoriteCity = new FavoriteCity(
@@ -342,6 +452,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /*
+     * Checks notification permission and then displays the weather advice notification.
+     */
     private void requestNotificationAndShow() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -351,6 +464,11 @@ public class MainActivity extends AppCompatActivity {
         showWeatherNotification();
     }
 
+    /*
+     * Creates a notification channel for weather alerts.
+     *
+     * This must be done before showing notifications on Android 8.0/API 26+.
+     */
     private void createNotificationChannel() {
         // Notification channels are required on Android 8.0 and newer.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -369,6 +487,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /*
+     * Builds and shows a system notification.
+     *
+     * BigTextStyle is used because travel advice may be longer than one line.
+     */
     private void showWeatherNotification() {
         // The notification contains the generated travel advice for the current city.
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -389,16 +512,25 @@ public class MainActivity extends AppCompatActivity {
         showStatus("Notification shown.");
     }
 
+    /*
+     * Shows or hides the loading spinner and writes a short status message.
+     */
     private void showLoading(boolean loading, String message) {
         binding.progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         showStatus(message);
     }
 
+    /*
+     * Displays feedback both in the status TextView and as a Toast.
+     */
     private void showStatus(String message) {
         binding.statusTextView.setText(message);
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
+    /*
+     * Hides the soft keyboard after the user presses Search.
+     */
     private void hideKeyboard() {
         InputMethodManager manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (manager != null && getCurrentFocus() != null) {
@@ -409,6 +541,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        // Stop the database thread when the Activity is destroyed.
         databaseExecutor.shutdown();
     }
 }

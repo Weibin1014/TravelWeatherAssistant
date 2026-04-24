@@ -9,6 +9,12 @@ import androidx.room.Query;
 
 import java.util.List;
 
+/*
+ * DAO means Data Access Object.
+ *
+ * This interface defines all database actions that the app needs.
+ * Room generates the actual implementation automatically at build time.
+ */
 @Dao
 public interface FavoriteCityDao {
     // Insert a favorite city into the local Room database.

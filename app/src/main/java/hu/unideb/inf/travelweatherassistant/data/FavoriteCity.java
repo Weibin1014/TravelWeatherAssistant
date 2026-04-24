@@ -4,6 +4,12 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
+/*
+ * FavoriteCity is a Room Entity.
+ *
+ * In Room, an Entity represents one database table. Each object of this class
+ * becomes one row in the favorite_cities table.
+ */
 @Entity(tableName = "favorite_cities")
 public class FavoriteCity {
     // Room uses this auto-generated id as the primary key for each saved city.
@@ -25,6 +31,10 @@ public class FavoriteCity {
     public FavoriteCity() {
     }
 
+    /*
+     * This constructor is used by our own Java code when saving a city.
+     * Room ignores it because Room uses the empty constructor above.
+     */
     @Ignore
     public FavoriteCity(String name, String country, double latitude, double longitude,
                         String lastCondition, double lastTemperature, long updatedAt) {

@@ -2,11 +2,21 @@ package hu.unideb.inf.travelweatherassistant.network;
 
 import com.google.gson.annotations.SerializedName;
 
+/*
+ * Java model for the JSON weather response.
+ *
+ * Retrofit downloads JSON from the internet, and Gson converts it into this
+ * Java object. The app then reads current.temperature, current.weatherCode, etc.
+ */
 public class WeatherResponse {
     public double latitude;
     public double longitude;
     public CurrentWeather current;
 
+    /*
+     * Contains only the current weather values requested in WeatherRepository.
+     * If more API fields are requested later, they can be added here.
+     */
     public static class CurrentWeather {
         public String time;
 

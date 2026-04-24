@@ -8,6 +8,13 @@ import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+/*
+ * Repository layer for weather-related network operations.
+ *
+ * The Activity should not need to know how Retrofit is created or which base
+ * URLs are used. Keeping this code here makes MainActivity cleaner and shows
+ * a simple design-pattern idea from the course.
+ */
 public class WeatherRepository {
     private static final String WEATHER_BASE_URL = "https://api.open-meteo.com/v1/";
     private static final String GEOCODING_BASE_URL = "https://geocoding-api.open-meteo.com/v1/";

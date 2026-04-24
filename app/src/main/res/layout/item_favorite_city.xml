@@ -8,6 +8,7 @@
     android:orientation="horizontal"
     android:padding="14dp">
 
+    <!-- Small icon that visually summarizes the saved weather condition. -->
     <TextView
         android:id="@+id/favoriteIconTextView"
         android:layout_width="44dp"
@@ -23,6 +24,7 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
+        <!-- Favorite city name and country. -->
         <TextView
             android:id="@+id/favoriteNameTextView"
             android:layout_width="match_parent"
@@ -32,6 +34,7 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <!-- Last saved temperature and condition preview. -->
         <TextView
             android:id="@+id/favoriteDetailsTextView"
             android:layout_width="match_parent"

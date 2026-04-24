@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Internet permission is required for calling the Open-Meteo APIs. -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Location permissions are required for the "Use GPS" weather feature. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Android 13+ requires this permission before the app can show notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -15,6 +20,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TravelWeatherAssistant">
+        <!-- MainActivity is the launcher screen, so Android opens it first. -->
         <activity
             android:name=".MainActivity"
             android:exported="true">

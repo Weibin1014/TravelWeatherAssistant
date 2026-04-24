@@ -15,6 +15,12 @@ import hu.unideb.inf.travelweatherassistant.R;
 import hu.unideb.inf.travelweatherassistant.data.FavoriteCity;
 import hu.unideb.inf.travelweatherassistant.databinding.ItemFavoriteCityBinding;
 
+/*
+ * RecyclerView adapter for the favorite city list.
+ *
+ * RecyclerView does not display data directly. The adapter receives a list of
+ * FavoriteCity objects and creates/binds one row layout for each city.
+ */
 public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapter.FavoriteCityViewHolder> {
     // MainActivity provides this callback so the adapter can react to item taps.
     public interface OnFavoriteCityClickListener {
@@ -42,6 +48,7 @@ public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapte
     @NonNull
     @Override
     public FavoriteCityViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        // Create one row view from item_favorite_city.xml.
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_favorite_city, parent, false);
         return new FavoriteCityViewHolder(view);
@@ -49,6 +56,7 @@ public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapte
 
     @Override
     public void onBindViewHolder(@NonNull FavoriteCityViewHolder holder, int position) {
+        // Put data from the city at this position into the row view.
         holder.bind(cities.get(position));
     }
 
@@ -58,6 +66,7 @@ public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapte
     }
 
     class FavoriteCityViewHolder extends RecyclerView.ViewHolder {
+        // ViewHolder keeps references to row views for better RecyclerView performance.
         private final ItemFavoriteCityBinding binding;
 
         FavoriteCityViewHolder(@NonNull View itemView) {

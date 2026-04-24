@@ -2,6 +2,12 @@ package hu.unideb.inf.travelweatherassistant.util;
 
 import hu.unideb.inf.travelweatherassistant.network.WeatherResponse;
 
+/*
+ * Utility class for converting raw weather API values into user-friendly output.
+ *
+ * Open-Meteo returns weather_code as a number. This class translates it into
+ * readable text, an icon, and practical advice for travelers.
+ */
 public class WeatherInterpreter {
     private WeatherInterpreter() {
     }
