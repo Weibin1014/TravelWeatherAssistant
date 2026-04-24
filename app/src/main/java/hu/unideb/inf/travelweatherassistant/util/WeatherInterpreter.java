@@ -7,6 +7,7 @@ public class WeatherInterpreter {
     }
 
     public static String describeCode(int code) {
+        // Open-Meteo uses numeric weather codes; this converts them to readable text.
         if (code == 0) return "Clear sky";
         if (code == 1 || code == 2 || code == 3) return "Partly cloudy";
         if (code == 45 || code == 48) return "Foggy";
@@ -19,6 +20,7 @@ public class WeatherInterpreter {
     }
 
     public static String iconForCode(int code) {
+        // The UI uses these icons as a lightweight multimedia-style weather display.
         if (code == 0) return "☀";
         if (code == 1 || code == 2 || code == 3) return "⛅";
         if (code == 45 || code == 48) return "🌫";
@@ -30,6 +32,7 @@ public class WeatherInterpreter {
     }
 
     public static String travelAdvice(WeatherResponse.CurrentWeather current) {
+        // Build practical travel advice from weather code, temperature and wind speed.
         StringBuilder advice = new StringBuilder();
 
         if (current.weatherCode >= 51 && current.weatherCode <= 82) {

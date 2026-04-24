@@ -10,6 +10,7 @@ public class WeatherResponse {
     public static class CurrentWeather {
         public String time;
 
+        // SerializedName maps Java-friendly names to the JSON field names returned by the API.
         @SerializedName("temperature_2m")
         public double temperature;
 

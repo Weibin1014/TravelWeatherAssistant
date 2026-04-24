@@ -6,16 +6,22 @@ import androidx.room.PrimaryKey;
 
 @Entity(tableName = "favorite_cities")
 public class FavoriteCity {
+    // Room uses this auto-generated id as the primary key for each saved city.
     @PrimaryKey(autoGenerate = true)
     public int id;
+
+    // Basic city information and the coordinates needed for the weather API.
     public String name;
     public String country;
     public double latitude;
     public double longitude;
+
+    // Last known weather values are stored for a quick favorites list preview.
     public String lastCondition;
     public double lastTemperature;
     public long updatedAt;
 
+    // Room needs an empty constructor to recreate objects from the database.
     public FavoriteCity() {
     }
 

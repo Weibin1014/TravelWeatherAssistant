@@ -16,6 +16,7 @@ import hu.unideb.inf.travelweatherassistant.data.FavoriteCity;
 import hu.unideb.inf.travelweatherassistant.databinding.ItemFavoriteCityBinding;
 
 public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapter.FavoriteCityViewHolder> {
+    // MainActivity provides this callback so the adapter can react to item taps.
     public interface OnFavoriteCityClickListener {
         void onFavoriteCityClick(FavoriteCity city);
     }
@@ -28,6 +29,7 @@ public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapte
     }
 
     public void setCities(List<FavoriteCity> newCities) {
+        // Replace the adapter data whenever Room emits a new favorites list.
         cities.clear();
         cities.addAll(newCities);
         notifyDataSetChanged();
@@ -64,6 +66,7 @@ public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapte
         }
 
         void bind(FavoriteCity city) {
+            // Bind one FavoriteCity object to one RecyclerView row.
             binding.favoriteNameTextView.setText(city.name + ", " + city.country);
             binding.favoriteDetailsTextView.setText(String.format(Locale.getDefault(),
                     "%.1f°C · %s", city.lastTemperature, city.lastCondition));
@@ -72,6 +75,7 @@ public class FavoriteCityAdapter extends RecyclerView.Adapter<FavoriteCityAdapte
         }
 
         private String iconForCondition(String condition) {
+            // Pick a simple visual icon based on the saved weather condition text.
             if (condition == null) return "☁";
             String lower = condition.toLowerCase(Locale.ROOT);
             if (lower.contains("clear")) return "☀";

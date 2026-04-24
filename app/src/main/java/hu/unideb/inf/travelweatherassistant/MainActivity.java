@@ -52,12 +52,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String NOTIFICATION_CHANNEL_ID = "travel_weather_alerts";
     private static final int WEATHER_NOTIFICATION_ID = 101;
 
+    // ViewBinding gives type-safe access to the XML views in activity_main.xml.
     private ActivityMainBinding binding;
     private WeatherRepository weatherRepository;
     private FavoriteCityDatabase database;
     private FavoriteCityAdapter favoriteCityAdapter;
+
+    // Room database operations must not run on the main UI thread.
     private final ExecutorService databaseExecutor = Executors.newSingleThreadExecutor();
 
+    // The app starts with Budapest as a default location before the user searches or uses GPS.
     private String currentCityName = "Budapest";
     private String currentCountry = "Hungary";
     private double currentLatitude = 47.4979;
@@ -66,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private double currentTemperature = 0.0;
     private String currentAdvice = "Travel advice will be generated from real weather data.";
 
+    // Handles the result of the runtime location permission dialog.
     private final ActivityResultLauncher<String[]> locationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestMultiplePermissions(), result -> {
                 Boolean fine = result.get(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -77,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    // Android 13+ requires notification permission before showing app notifications.
     private final ActivityResultLauncher<String> notificationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 if (granted) {
@@ -110,16 +116,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupFavoritesList() {
+        // The adapter displays saved cities and reloads weather when a favorite is tapped.
         favoriteCityAdapter = new FavoriteCityAdapter(city ->
                 loadWeatherForCity(city.name, city.country, city.latitude, city.longitude));
         binding.favoritesRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         binding.favoritesRecyclerView.setAdapter(favoriteCityAdapter);
 
+        // LiveData automatically refreshes the list when Room data changes.
         database.favoriteCityDao().getAllFavorites().observe(this, favoriteCities -> {
             favoriteCityAdapter.setCities(favoriteCities);
             binding.emptyFavoritesTextView.setVisibility(favoriteCities.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
+        // Swipe left or right to remove a saved city from the Room database.
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
                 0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
@@ -153,6 +162,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // First call the geocoding API to convert a city name into latitude and longitude.
         hideKeyboard();
         showLoading(true, "Searching city...");
         weatherRepository.searchCity(query).enqueue(new Callback<GeocodingResponse>() {
@@ -179,6 +189,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void requestLocationWeather() {
+        // Location is a dangerous permission, so it must be requested at runtime.
         if (!hasLocationPermission()) {
             locationPermissionLauncher.launch(new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -212,10 +223,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // If Android has no cached location, request one fresh location update.
         requestSingleLocationUpdate(locationManager);
     }
 
     private Location getBestLastKnownLocation(LocationManager locationManager) {
+        // Try every enabled provider and keep the most accurate last known location.
         List<String> providers = locationManager.getProviders(true);
         Location bestLocation = null;
         for (String provider : providers) {
@@ -265,6 +278,7 @@ public class MainActivity extends AppCompatActivity {
         binding.cityNameTextView.setText(cityName + ", " + country);
         showLoading(true, "Loading weather for " + cityName + "...");
 
+        // Retrofit runs the network request asynchronously and returns on the main thread.
         weatherRepository.fetchWeather(latitude, longitude).enqueue(new Callback<WeatherResponse>() {
             @Override
             public void onResponse(@NonNull Call<WeatherResponse> call,
@@ -286,6 +300,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void renderWeather(String cityName, String country, WeatherResponse.CurrentWeather current) {
+        // Convert API values into user-friendly text, icons and travel advice.
         currentCondition = WeatherInterpreter.describeCode(current.weatherCode);
         currentTemperature = current.temperature;
         currentAdvice = WeatherInterpreter.travelAdvice(current);
@@ -304,6 +319,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void saveCurrentCity() {
+        // Store the current weather summary so the favorites list can show useful details.
         FavoriteCity favoriteCity = new FavoriteCity(
                 currentCityName,
                 currentCountry,
@@ -315,6 +331,7 @@ public class MainActivity extends AppCompatActivity {
         );
 
         databaseExecutor.execute(() -> {
+            // Avoid saving the same city twice.
             int count = database.favoriteCityDao().countByName(currentCityName, currentCountry);
             if (count > 0) {
                 runOnUiThread(() -> showStatus(currentCityName + " is already in favorites."));
@@ -335,6 +352,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createNotificationChannel() {
+        // Notification channels are required on Android 8.0 and newer.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return;
         }
@@ -352,6 +370,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showWeatherNotification() {
+        // The notification contains the generated travel advice for the current city.
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             showStatus("Notification permission is required on this Android version.");
