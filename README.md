@@ -1,51 +1,68 @@
 # Travel Weather Assistant
 
-An Android final project app built in Java for the Mobile Development course.
+Travel Weather Assistant is an Android app built in Java. It helps users check real-time weather, receive travel advice, and get clothing suggestions before going outside or travelling to another city.
 
-## Main idea
+## What the app does
 
-Travel Weather Assistant helps users check real-time weather for their current GPS location or for a searched city. The app also generates simple travel advice, for example whether the user should bring an umbrella, wear warm clothes, or use sunscreen.
+The app can show weather information for a searched city or for the user's current location. It uses real weather data and turns it into practical advice that is easy to understand.
+
+The main screen shows:
+
+- City name and country
+- Current temperature
+- Weather condition
+- Weather icon
+- Feels-like temperature
+- Humidity
+- Wind speed
+- Rain amount
+- Travel advice
+- Outfit/clothing advice
 
 ## Main features
 
-- Get weather for the current GPS location
 - Search weather by city name
-- Call the Open-Meteo third-party weather and geocoding APIs
-- Show temperature, weather condition, humidity, wind speed and rain amount
-- Generate travel advice from the current weather data
-- Generate outfit/clothing advice from temperature, rain, snow and wind
-- Save favorite cities locally with Room database
+- Get weather using the phone's current GPS location
+- Load real-time weather from the Open-Meteo Weather API
+- Convert city names into coordinates with the Open-Meteo Geocoding API
+- Save favorite cities locally
+- Display favorite cities in a RecyclerView list
 - Tap a favorite city to reload its weather
-- Swipe a favorite city to delete it
-- Show an Android notification with weather advice
-- Material-style responsive UI
+- Swipe a favorite city left or right to delete it
+- Generate weather-based travel advice
+- Generate outfit advice based on temperature, rain, snow, wind and storms
+- Show an Android notification with the current advice
+- Use a clean Material-style interface
 
-## Course topics used
+## Outfit Advisor
 
-- Week 2-3: User interface design
-- Week 5: Persistent data storage with Room
-- Week 6: Localization / GPS location
-- Week 8: High-level network communication
-- Week 10: Multimedia-style weather icons and visual UI
-- Week 11: API calling
-- Week 12: Repository pattern and separated app layers
+The creative part of the app is the `OutfitAdvisor` module.
 
-## Creative extension
+It works like a small local agent. It reads the current weather data and recommends what the user should wear. For example, it can suggest a winter coat, light jacket, raincoat, waterproof shoes, sunglasses, sunscreen, or windbreaker depending on the weather.
 
-The app includes an `OutfitAdvisor` module. It works like a small local agent:
-it reads the current weather values and recommends what the user should wear.
-This is implemented locally so the project works without an LLM API key, but
-the class is separated from `MainActivity`, so it can later be replaced by a
-real LLM API call if needed.
+This feature currently works without an API key because it is rule-based. The code is separated from `MainActivity`, so it can later be replaced with a real LLM API call if needed.
 
-## Third-party technologies
+## Favorite cities
 
+Users can save the currently displayed city as a favorite. Favorites are stored on the device with a Room database. The favorite list also shows the last saved temperature and weather condition.
+
+## Notifications
+
+The app can show a weather notification. The notification includes the current travel advice and outfit suggestion, so the user can quickly check what to prepare before going outside.
+
+## Technologies used
+
+- Java
+- Android Studio
 - Open-Meteo Weather API
 - Open-Meteo Geocoding API
 - Retrofit
 - Gson converter
 - Room database
+- RecyclerView
 - Material Components
+- Android location services
+- Android notifications
 
 ## How to run
 
