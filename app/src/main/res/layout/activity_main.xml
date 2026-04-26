@@ -115,6 +115,27 @@
                     android:textColor="@color/ink"
                     android:textSize="16sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="Outfit Advisor"
+                    android:textColor="@color/ink"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <!-- Creative part: clothing advice generated from the current weather. -->
+                <TextView
+                    android:id="@+id/outfitAdviceTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/input_surface"
+                    android:padding="16dp"
+                    android:text="Clothing advice will appear after weather data is loaded."
+                    android:textColor="@color/ink"
+                    android:textSize="15sp" />
             </LinearLayout>
 
             <!-- Main action buttons: GPS weather and saving the current city. -->

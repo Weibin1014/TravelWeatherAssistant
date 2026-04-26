@@ -43,6 +43,7 @@ import hu.unideb.inf.travelweatherassistant.network.GeocodingResponse;
 import hu.unideb.inf.travelweatherassistant.network.WeatherResponse;
 import hu.unideb.inf.travelweatherassistant.repository.WeatherRepository;
 import hu.unideb.inf.travelweatherassistant.ui.FavoriteCityAdapter;
+import hu.unideb.inf.travelweatherassistant.util.OutfitAdvisor;
 import hu.unideb.inf.travelweatherassistant.util.WeatherInterpreter;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -57,9 +58,10 @@ import retrofit2.Response;
  * 3. Network/API: calls Open-Meteo APIs through WeatherRepository and Retrofit.
  * 4. Persistent storage: saves favorite cities into a Room database.
  * 5. Communication solution: shows Android notifications with travel advice.
+ * 6. Creative extension: gives outfit advice based on the weather.
  *
  * The activity intentionally delegates API details to WeatherRepository and
- * weather-code logic to WeatherInterpreter, so the code is easier to explain.
+ * weather-code logic to WeatherInterpreter/OutfitAdvisor, so the code is easier to explain.
  */
 public class MainActivity extends AppCompatActivity {
     // Android notifications on version 8.0+ must belong to a channel.
@@ -91,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
     private String currentCondition = "Unknown weather";
     private double currentTemperature = 0.0;
     private String currentAdvice = "Travel advice will be generated from real weather data.";
+    private String currentOutfitAdvice = "Clothing advice will appear after weather data is loaded.";
 
     /*
      * Handles the result of the runtime location permission dialog.
@@ -401,13 +404,14 @@ public class MainActivity extends AppCompatActivity {
      * Updates the UI after a successful weather response.
      *
      * The raw API response contains numbers such as weather_code. The app converts
-     * those numbers into readable condition text, icons and travel advice.
+     * those numbers into readable condition text, icons, travel advice and outfit advice.
      */
     private void renderWeather(String cityName, String country, WeatherResponse.CurrentWeather current) {
         // Convert API values into user-friendly text, icons and travel advice.
         currentCondition = WeatherInterpreter.describeCode(current.weatherCode);
         currentTemperature = current.temperature;
         currentAdvice = WeatherInterpreter.travelAdvice(current);
+        currentOutfitAdvice = OutfitAdvisor.suggestOutfit(current);
 
         binding.cityNameTextView.setText(cityName + ", " + country);
         binding.weatherIconTextView.setText(WeatherInterpreter.iconForCode(current.weatherCode));
@@ -420,6 +424,7 @@ public class MainActivity extends AppCompatActivity {
                 current.windSpeed,
                 current.rain));
         binding.adviceTextView.setText(currentAdvice);
+        binding.outfitAdviceTextView.setText(currentOutfitAdvice);
     }
 
     /*
@@ -504,7 +509,8 @@ public class MainActivity extends AppCompatActivity {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Weather advice for " + currentCityName)
                 .setContentText(currentAdvice)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(currentAdvice))
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(currentAdvice + "\n\nOutfit: " + currentOutfitAdvice))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true);
 

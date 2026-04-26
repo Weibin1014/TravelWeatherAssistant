@@ -13,6 +13,7 @@ Travel Weather Assistant helps users check real-time weather for their current G
 - Call the Open-Meteo third-party weather and geocoding APIs
 - Show temperature, weather condition, humidity, wind speed and rain amount
 - Generate travel advice from the current weather data
+- Generate outfit/clothing advice from temperature, rain, snow and wind
 - Save favorite cities locally with Room database
 - Tap a favorite city to reload its weather
 - Swipe a favorite city to delete it
@@ -28,6 +29,14 @@ Travel Weather Assistant helps users check real-time weather for their current G
 - Week 10: Multimedia-style weather icons and visual UI
 - Week 11: API calling
 - Week 12: Repository pattern and separated app layers
+
+## Creative extension
+
+The app includes an `OutfitAdvisor` module. It works like a small local agent:
+it reads the current weather values and recommends what the user should wear.
+This is implemented locally so the project works without an LLM API key, but
+the class is separated from `MainActivity`, so it can later be replaced by a
+real LLM API call if needed.
 
 ## Third-party technologies
 
