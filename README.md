@@ -50,6 +50,36 @@ Users can save the currently displayed city as a favorite. Favorites are stored 
 
 The app can show a weather notification. The notification includes the current travel advice and outfit suggestion, so the user can quickly check what to prepare before going outside.
 
+## Background concepts
+
+### Location and permissions
+
+The app uses Android location services to read the user's current location. Because location is sensitive personal data, Android requires location permissions. The app requests location permission only when the user presses the GPS weather button.
+
+### Weather API and geocoding
+
+The weather API needs latitude and longitude. When the user searches by city name, the app first calls the geocoding API to convert the city name into coordinates. Then it sends those coordinates to the weather API to get current weather data.
+
+### Retrofit and JSON parsing
+
+Retrofit is used to define API requests as Java interfaces. Gson is used with Retrofit to convert JSON responses into Java model classes such as `WeatherResponse` and `GeocodingResponse`.
+
+### Room database
+
+Room is used for local persistent storage. In this app, `FavoriteCity` is the entity, `FavoriteCityDao` contains database operations, and `FavoriteCityDatabase` provides the database instance.
+
+### RecyclerView
+
+RecyclerView is used to display the saved favorite cities efficiently. The adapter converts each `FavoriteCity` object into one visible row in the list.
+
+### Notifications
+
+Android notifications are used to show short advice outside the main app screen. The app creates a notification channel and then displays the current travel and outfit advice.
+
+### Rule-based agent idea
+
+The `OutfitAdvisor` module is rule-based. It checks weather values such as apparent temperature, rain, snow, wind speed and thunderstorm conditions, then generates a clothing recommendation. This is not a real LLM yet, but it follows a similar idea: taking structured weather input and producing human-friendly advice.
+
 ## Technologies used
 
 - Java
@@ -63,6 +93,18 @@ The app can show a weather notification. The notification includes the current t
 - Material Components
 - Android location services
 - Android notifications
+
+## References
+
+- [Android Developers: Request location permissions](https://developer.android.com/develop/sensors-and-location/location/permissions)
+- [Android Developers: Request location access at runtime](https://developer.android.com/develop/sensors-and-location/location/permissions/runtime)
+- [Android Developers: Save data in a local database using Room](https://developer.android.com/room)
+- [Android Developers: Create dynamic lists with RecyclerView](https://developer.android.com/develop/ui/views/layout/recyclerview)
+- [Android Developers: About notifications](https://developer.android.com/guide/topics/ui/notifiers/notifications.html)
+- [Open-Meteo Weather API documentation](https://open-meteo.com/en/docs)
+- [Open-Meteo Geocoding API documentation](https://open-meteo.com/en/docs/geocoding-api)
+- [Retrofit official documentation](https://square.github.io/retrofit/)
+- [Gson User Guide](https://google.github.io/gson/UserGuide.html)
 
 ## How to run
 
