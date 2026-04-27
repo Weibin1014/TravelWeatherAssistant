@@ -1,6 +1,6 @@
-# Travel Weather Assistant
+# TripCast
 
-Travel Weather Assistant is an Android app built in Java. It helps users check real-time weather, receive travel advice, and get clothing suggestions before going outside or travelling to another city.
+TripCast is an Android app built in Java. It helps users check real-time weather, receive travel advice, and get clothing suggestions before going outside or travelling to another city.
 
 ## What the app does
 

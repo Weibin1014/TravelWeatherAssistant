@@ -22,7 +22,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Travel Weather Assistant"
+                android:text="TripCast"
                 android:textColor="#FFFFFF"
                 android:textSize="30sp"
                 android:textStyle="bold" />
@@ -31,7 +31,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Weather, location, API, Room database and travel advice in one Android app."
+                android:text="Smart weather, travel advice and outfit suggestions for every trip."
                 android:textColor="#E8F5FF"
                 android:textSize="15sp" />
 
