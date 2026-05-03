@@ -167,6 +167,17 @@
                     app:strokeColor="#FFFFFF" />
             </LinearLayout>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/refreshWeatherButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Refresh current weather"
+                android:textColor="#FFFFFF"
+                app:cornerRadius="18dp"
+                app:strokeColor="#FFFFFF" />
+
             <!-- City search section: user types a city name and calls the geocoding API. -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -211,6 +222,56 @@
                         android:text="Search"
                         app:cornerRadius="16dp" />
                     </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="Demo cities"
+                    android:textColor="#4B5E75"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <!-- Quick city buttons make the final presentation faster and safer. -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/budapestButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:text="Budapest"
+                        android:textColor="@color/sky_deep"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/debrecenButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="6dp"
+                        android:layout_weight="1"
+                        android:text="Debrecen"
+                        android:textColor="@color/sky_deep"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/londonButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:text="London"
+                        android:textColor="@color/sky_deep"
+                        app:cornerRadius="14dp" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Demonstrates Android communication solutions through notifications. -->

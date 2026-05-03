@@ -94,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
     private double currentTemperature = 0.0;
     private String currentAdvice = "Travel advice will be generated from real weather data.";
     private String currentOutfitAdvice = "Clothing advice will appear after weather data is loaded.";
+    private long lastUpdatedAt = 0L;
 
     /*
      * Handles the result of the runtime location permission dialog.
@@ -207,7 +208,35 @@ public class MainActivity extends AppCompatActivity {
         binding.currentLocationButton.setOnClickListener(v -> requestLocationWeather());
         binding.searchButton.setOnClickListener(v -> searchCity());
         binding.saveFavoriteButton.setOnClickListener(v -> saveCurrentCity());
+        binding.refreshWeatherButton.setOnClickListener(v -> refreshCurrentWeather());
         binding.notifyButton.setOnClickListener(v -> requestNotificationAndShow());
+
+        // Demo buttons reduce typing during the final presentation.
+        binding.budapestButton.setOnClickListener(v ->
+                loadDemoCity("Budapest", "Hungary", 47.4979, 19.0402));
+        binding.debrecenButton.setOnClickListener(v ->
+                loadDemoCity("Debrecen", "Hungary", 47.5316, 21.6273));
+        binding.londonButton.setOnClickListener(v ->
+                loadDemoCity("London", "United Kingdom", 51.5072, -0.1276));
+    }
+
+    /*
+     * Loads one of the prepared demo cities.
+     *
+     * This makes the live presentation more stable because the user can show
+     * city search results without depending on typing speed or spelling.
+     */
+    private void loadDemoCity(String cityName, String country, double latitude, double longitude) {
+        binding.searchCityEditText.setText(cityName);
+        hideKeyboard();
+        loadWeatherForCity(cityName, country, latitude, longitude);
+    }
+
+    /*
+     * Reloads weather for the city that is currently displayed.
+     */
+    private void refreshCurrentWeather() {
+        loadWeatherForCity(currentCityName, currentCountry, currentLatitude, currentLongitude);
     }
 
     /*
@@ -234,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
                 showLoading(false, "City search completed.");
                 GeocodingResponse body = response.body();
                 if (!response.isSuccessful() || body == null || body.results == null || body.results.isEmpty()) {
-                    showStatus("No city found. Try a more specific name.");
+                    showStatus("No city found. Try a more specific name, for example Debrecen.");
                     return;
                 }
 
@@ -245,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NonNull Call<GeocodingResponse> call, @NonNull Throwable t) {
-                showLoading(false, "Could not search city: " + t.getMessage());
+                showLoading(false, friendlyNetworkError("search the city"));
             }
         });
     }
@@ -387,7 +416,7 @@ public class MainActivity extends AppCompatActivity {
                 showLoading(false, "Weather updated.");
                 WeatherResponse body = response.body();
                 if (!response.isSuccessful() || body == null || body.current == null) {
-                    showStatus("Weather API did not return usable data.");
+                    showStatus("Weather data is not available right now. Please try Refresh or choose another city.");
                     return;
                 }
                 renderWeather(cityName, country, body.current);
@@ -395,7 +424,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NonNull Call<WeatherResponse> call, @NonNull Throwable t) {
-                showLoading(false, "Could not load weather: " + t.getMessage());
+                showLoading(false, friendlyNetworkError("load weather"));
             }
         });
     }
@@ -412,6 +441,7 @@ public class MainActivity extends AppCompatActivity {
         currentTemperature = current.temperature;
         currentAdvice = WeatherInterpreter.travelAdvice(current);
         currentOutfitAdvice = OutfitAdvisor.suggestOutfit(current);
+        lastUpdatedAt = System.currentTimeMillis();
 
         binding.cityNameTextView.setText(cityName + ", " + country);
         binding.weatherIconTextView.setText(WeatherInterpreter.iconForCode(current.weatherCode));
@@ -442,7 +472,7 @@ public class MainActivity extends AppCompatActivity {
                 currentLongitude,
                 currentCondition,
                 currentTemperature,
-                System.currentTimeMillis()
+                lastUpdatedAt == 0L ? System.currentTimeMillis() : lastUpdatedAt
         );
 
         databaseExecutor.execute(() -> {
@@ -532,6 +562,13 @@ public class MainActivity extends AppCompatActivity {
     private void showStatus(String message) {
         binding.statusTextView.setText(message);
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    /*
+     * Gives a clean user-facing message instead of showing low-level network errors.
+     */
+    private String friendlyNetworkError(String action) {
+        return "Unable to " + action + ". Please check your internet connection and try again.";
     }
 
     /*

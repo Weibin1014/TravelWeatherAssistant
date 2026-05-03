@@ -23,6 +23,8 @@ The main screen shows:
 
 - Search weather by city name
 - Get weather using the phone's current GPS location
+- Use prepared demo city buttons for Budapest, Debrecen and London
+- Refresh the currently displayed weather
 - Load real-time weather from the Open-Meteo Weather API
 - Convert city names into coordinates with the Open-Meteo Geocoding API
 - Save favorite cities locally
@@ -31,6 +33,7 @@ The main screen shows:
 - Swipe a favorite city left or right to delete it
 - Generate weather-based travel advice
 - Generate outfit advice based on temperature, rain, snow, wind and storms
+- Show friendly error messages if the network or API is unavailable
 - Show an Android notification with the current advice
 - Use a clean Material-style interface
 

@@ -32,29 +32,32 @@ public class OutfitAdvisor {
 
     private static String baseLayerAdvice(double feelsLike) {
         if (feelsLike < 0) {
-            return "Wear a winter coat, thermal layers, gloves and a warm hat.";
+            return "Wear a heavy winter coat, thermal layers, gloves and a warm hat.";
         }
         if (feelsLike < 8) {
-            return "Choose a warm jacket or coat with a sweater underneath.";
+            return "Choose a warm coat with a sweater underneath.";
         }
         if (feelsLike < 16) {
-            return "A light jacket or hoodie should be comfortable.";
+            return "A light jacket, hoodie or cardigan should be comfortable.";
         }
         if (feelsLike < 24) {
             return "A T-shirt with an optional thin layer is enough.";
         }
-        return "Wear light, breathable clothes such as a T-shirt and shorts.";
+        if (feelsLike < 30) {
+            return "Wear light, breathable clothes such as a T-shirt or thin shirt.";
+        }
+        return "Choose very light clothes and avoid dark, heavy fabrics.";
     }
 
     private static String weatherProtectionAdvice(int code, double rain) {
         if (code >= 95) {
             return "Because storms are possible, avoid metal umbrellas and stay near safe indoor places.";
         }
-        if ((code >= 51 && code <= 82) || rain > 0) {
-            return "Add a raincoat or umbrella and choose shoes that can handle wet streets.";
-        }
         if (code >= 71 && code <= 77) {
             return "Use waterproof boots because snow can make sidewalks slippery.";
+        }
+        if ((code >= 51 && code <= 82) || rain > 0) {
+            return "Add a raincoat or umbrella and choose shoes that can handle wet streets.";
         }
         if (code == 45 || code == 48) {
             return "Fog can reduce visibility, so brighter outerwear is a smart choice.";
@@ -73,11 +76,17 @@ public class OutfitAdvisor {
     }
 
     private static String accessoryAdvice(WeatherResponse.CurrentWeather current) {
+        if (current.weatherCode == 0 && current.temperature > 27) {
+            return "Sunglasses, sunscreen, a hat and a water bottle would make the trip safer.";
+        }
         if (current.weatherCode == 0 && current.temperature > 22) {
             return "Sunglasses, sunscreen and a water bottle would make the trip nicer.";
         }
         if (current.apparentTemperature < 5) {
             return "A scarf can make the outfit much more comfortable.";
+        }
+        if (current.humidity > 85) {
+            return "Because humidity is high, breathable fabrics are a better choice.";
         }
         return "Keep the outfit simple and comfortable for walking.";
     }
