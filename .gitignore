@@ -14,3 +14,6 @@
 .cxx
 local.properties
 app/build
+
+# Android Studio device manager local state
+.idea/deviceManager.xml
