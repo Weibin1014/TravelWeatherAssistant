@@ -5,11 +5,14 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -31,6 +34,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -311,8 +316,9 @@ public class MainActivity extends AppCompatActivity {
     /*
      * Reads the device location and loads weather for it.
      *
-     * The method first tries "last known location" because it is fast and saves battery.
-     * If no cached location exists, it requests one fresh location update.
+     * The GPS button should not reuse the previously searched city. It first asks
+     * Android for a fresh location update. Only if that does not arrive quickly,
+     * the app falls back to a recent cached location.
      */
     private void loadWeatherFromDeviceLocation() {
         if (!hasLocationPermission()) {
@@ -326,13 +332,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        Location lastLocation = getBestLastKnownLocation(locationManager);
-        if (lastLocation != null) {
-            loadWeatherForCity("Current location", "GPS", lastLocation.getLatitude(), lastLocation.getLongitude());
-            return;
-        }
-
-        // If Android has no cached location, request one fresh location update.
         requestSingleLocationUpdate(locationManager);
     }
 
@@ -359,28 +358,116 @@ public class MainActivity extends AppCompatActivity {
         return bestLocation;
     }
 
+    private boolean isRecentLocation(Location location) {
+        long age = System.currentTimeMillis() - location.getTime();
+        return age >= 0 && age < 5 * 60 * 1000;
+    }
+
+    private String[] knownEnglishLocationName(double latitude, double longitude) {
+        if (isNear(latitude, longitude, 47.5316, 21.6273, 25)) {
+            return new String[]{"Debrecen", "Hungary"};
+        }
+        if (isNear(latitude, longitude, 47.4979, 19.0402, 25)) {
+            return new String[]{"Budapest", "Hungary"};
+        }
+        if (isNear(latitude, longitude, 51.5072, -0.1276, 25)) {
+            return new String[]{"London", "United Kingdom"};
+        }
+        return null;
+    }
+
+    private boolean isNear(double latitude, double longitude, double targetLatitude,
+                           double targetLongitude, double maxDistanceKm) {
+        float[] distance = new float[1];
+        Location.distanceBetween(latitude, longitude, targetLatitude, targetLongitude, distance);
+        return distance[0] <= maxDistanceKm * 1000;
+    }
+
+    private boolean isFreshLocation(Location location) {
+        long age = System.currentTimeMillis() - location.getTime();
+        return location.getTime() == 0 || (age >= 0 && age < 2 * 60 * 1000);
+    }
+
+    private boolean isBetterLocation(Location newLocation, Location currentBest) {
+        if (currentBest == null) {
+            return true;
+        }
+        if (LocationManager.GPS_PROVIDER.equals(newLocation.getProvider())
+                && !LocationManager.GPS_PROVIDER.equals(currentBest.getProvider())) {
+            return true;
+        }
+        if (newLocation.hasAccuracy() && currentBest.hasAccuracy()) {
+            return newLocation.getAccuracy() < currentBest.getAccuracy();
+        }
+        return newLocation.getTime() > currentBest.getTime();
+    }
+
+    private List<String> getLocationProvidersInPreferredOrder(LocationManager locationManager) {
+        List<String> orderedProviders = new ArrayList<>();
+
+        // Prefer GPS, but still allow network location as a practical fallback.
+        // On many phones or emulators, pure GPS may not get a fix indoors.
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            orderedProviders.add(LocationManager.GPS_PROVIDER);
+        }
+
+        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            orderedProviders.add(LocationManager.NETWORK_PROVIDER);
+        }
+        for (String provider : locationManager.getProviders(true)) {
+            if (!orderedProviders.contains(provider)) {
+                orderedProviders.add(provider);
+            }
+        }
+        return orderedProviders;
+    }
+
     /*
      * Requests one new location update.
      *
-     * This is used only when the device has no cached location. In a real production
-     * app we might keep listening for multiple updates, but for this course project
-     * one update is enough to demonstrate localization.
+     * This method is used by the GPS button. It prefers fresh location data so the
+     * result does not stay on a city that was previously searched manually.
      */
     private void requestSingleLocationUpdate(LocationManager locationManager) {
-        List<String> providers = locationManager.getProviders(true);
+        List<String> providers = getLocationProvidersInPreferredOrder(locationManager);
         if (providers.isEmpty()) {
             showStatus("Please enable location services on the device.");
             return;
         }
 
-        String provider = providers.contains(LocationManager.NETWORK_PROVIDER)
-                ? LocationManager.NETWORK_PROVIDER
-                : providers.get(0);
-        showLoading(true, "Waiting for GPS location...");
+        showLoading(true, "Getting current GPS location...");
 
-        LocationListener listener = location -> {
-            showLoading(false, "Location received.");
-            loadWeatherForCity("Current location", "GPS", location.getLatitude(), location.getLongitude());
+        Handler handler = new Handler(Looper.getMainLooper());
+        boolean[] locationHandled = {false};
+        Location[] bestFreshLocation = {null};
+        LocationListener[] listenerHolder = new LocationListener[1];
+        Runnable[] timeoutHolder = new Runnable[1];
+
+        listenerHolder[0] = location -> {
+            if (locationHandled[0]) {
+                return;
+            }
+            if (!isFreshLocation(location)) {
+                return;
+            }
+
+            if (isBetterLocation(location, bestFreshLocation[0])) {
+                bestFreshLocation[0] = location;
+            }
+
+            // Accurate GPS fixes are safe to use immediately; otherwise wait briefly
+            // for a potentially better provider before updating the weather card.
+            if (LocationManager.GPS_PROVIDER.equals(location.getProvider())
+                    && (!location.hasAccuracy() || location.getAccuracy() <= 100)) {
+                locationHandled[0] = true;
+                if (timeoutHolder[0] != null) {
+                    handler.removeCallbacks(timeoutHolder[0]);
+                }
+                locationManager.removeUpdates(listenerHolder[0]);
+                showStatus("GPS location received.");
+                loadWeatherForResolvedLocation(location);
+            }
         };
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
@@ -388,7 +475,84 @@ public class MainActivity extends AppCompatActivity {
             showStatus("Location permission is required for GPS weather.");
             return;
         }
-        locationManager.requestSingleUpdate(provider, listener, Looper.getMainLooper());
+
+        int registeredProviders = 0;
+        for (String provider : providers) {
+            try {
+                locationManager.requestLocationUpdates(provider, 0, 0, listenerHolder[0], Looper.getMainLooper());
+                registeredProviders++;
+            } catch (SecurityException ignored) {
+                // The app may have approximate location only; skip providers Android refuses.
+            } catch (IllegalArgumentException ignored) {
+                // Some devices may report a provider that cannot be used.
+            }
+        }
+
+        if (registeredProviders == 0) {
+            showLoading(false, "No available location provider. Please enable GPS and try again.");
+            return;
+        }
+
+        timeoutHolder[0] = () -> {
+            if (locationHandled[0]) {
+                return;
+            }
+            locationHandled[0] = true;
+            locationManager.removeUpdates(listenerHolder[0]);
+
+            if (bestFreshLocation[0] != null) {
+                showStatus("Using best current location.");
+                loadWeatherForResolvedLocation(bestFreshLocation[0]);
+            } else {
+                Location cachedLocation = getBestLastKnownLocation(locationManager);
+                if (cachedLocation != null && isRecentLocation(cachedLocation)) {
+                    showStatus("Using recent device location.");
+                    loadWeatherForResolvedLocation(cachedLocation);
+                } else {
+                    showLoading(false, "Could not get a current GPS location. Please enable location and try again.");
+                }
+            }
+        };
+        handler.postDelayed(timeoutHolder[0], 10000);
+    }
+
+    private void loadWeatherForResolvedLocation(Location location) {
+        double latitude = location.getLatitude();
+        double longitude = location.getLongitude();
+
+        databaseExecutor.execute(() -> {
+            String cityName = "Current location";
+            String countryName = "GPS";
+            String[] knownName = knownEnglishLocationName(latitude, longitude);
+
+            if (knownName != null) {
+                cityName = knownName[0];
+                countryName = knownName[1];
+            } else if (Geocoder.isPresent()) {
+                try {
+                    // Use English for reverse geocoding so the app UI stays consistent.
+                    Geocoder geocoder = new Geocoder(this, Locale.ENGLISH);
+                    List<Address> addresses = geocoder.getFromLocation(latitude, longitude, 1);
+                    if (addresses != null && !addresses.isEmpty()) {
+                        Address address = addresses.get(0);
+                        if (address.getLocality() != null) {
+                            cityName = address.getLocality();
+                        } else if (address.getSubAdminArea() != null) {
+                            cityName = address.getSubAdminArea();
+                        }
+                        if (address.getCountryName() != null) {
+                            countryName = address.getCountryName();
+                        }
+                    }
+                } catch (IOException ignored) {
+                    // If reverse geocoding fails, the weather can still be loaded by coordinates.
+                }
+            }
+
+            String finalCityName = cityName;
+            String finalCountryName = countryName;
+            runOnUiThread(() -> loadWeatherForCity(finalCityName, finalCountryName, latitude, longitude));
+        });
     }
 
     /*
