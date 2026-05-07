@@ -34,7 +34,9 @@ The main screen shows:
 - Generate weather-based travel advice
 - Generate outfit advice based on temperature, rain, snow, wind and storms
 - Show friendly error messages if the network or API is unavailable
+- Show the current network status with an Android `BroadcastReceiver`
 - Show an Android notification with the current advice
+- Flash the phone torch as a manual weather safety alert
 - Use a clean Material-style interface
 
 ## Outfit Advisor
@@ -52,6 +54,14 @@ Users can save the currently displayed city as a favorite. Favorites are stored 
 ## Notifications
 
 The app can show a weather notification. The notification includes the current travel advice and outfit suggestion, so the user can quickly check what to prepare before going outside.
+
+## Network status receiver
+
+The app includes a dynamic `BroadcastReceiver` that listens for connectivity changes while the main screen is visible. It updates the network status label near the top of the app, so the user can see whether the weather API is ready or whether only local saved data may still be available.
+
+## Torch weather alert
+
+The app includes a manual Torch Weather Alert button. It uses Android `CameraManager` to flash the phone flashlight in a short pattern. This demonstrates a lower-level device feature and connects it to the weather topic as a visual safety alert for bad visibility, rain, fog or storm situations.
 
 ## Background concepts
 
@@ -79,6 +89,14 @@ RecyclerView is used to display the saved favorite cities efficiently. The adapt
 
 Android notifications are used to show short advice outside the main app screen. The app creates a notification channel and then displays the current travel and outfit advice.
 
+### BroadcastReceiver
+
+A `BroadcastReceiver` reacts to Android system messages. In this project, the receiver is registered dynamically in `MainActivity` and listens for connectivity changes. This is useful because real-time weather depends on internet access, while favorite cities can still be displayed from local Room storage.
+
+### CameraManager and torch mode
+
+`CameraManager` provides access to camera-related device features. The app searches for a camera with an available flash and uses torch mode to create a short visual alert. The feature asks for camera permission only when the user presses the torch button.
+
 ### Rule-based agent idea
 
 The `OutfitAdvisor` module is rule-based. It checks weather values such as apparent temperature, rain, snow, wind speed and thunderstorm conditions, then generates a clothing recommendation. This is not a real LLM yet, but it follows a similar idea: taking structured weather input and producing human-friendly advice.
@@ -96,6 +114,8 @@ The `OutfitAdvisor` module is rule-based. It checks weather values such as appar
 - Material Components
 - Android location services
 - Android notifications
+- Android BroadcastReceiver
+- Android CameraManager / torch mode
 
 ## References
 
@@ -104,6 +124,8 @@ The `OutfitAdvisor` module is rule-based. It checks weather values such as appar
 - [Android Developers: Save data in a local database using Room](https://developer.android.com/room)
 - [Android Developers: Create dynamic lists with RecyclerView](https://developer.android.com/develop/ui/views/layout/recyclerview)
 - [Android Developers: About notifications](https://developer.android.com/guide/topics/ui/notifiers/notifications.html)
+- [Android Developers: Broadcasts overview](https://developer.android.com/develop/background-work/background-tasks/broadcasts)
+- [Android Developers: CameraManager](https://developer.android.com/reference/android/hardware/camera2/CameraManager)
 - [Open-Meteo Weather API documentation](https://open-meteo.com/en/docs)
 - [Open-Meteo Geocoding API documentation](https://open-meteo.com/en/docs/geocoding-api)
 - [Retrofit official documentation](https://square.github.io/retrofit/)

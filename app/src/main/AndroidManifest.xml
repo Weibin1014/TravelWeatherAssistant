@@ -4,12 +4,21 @@
     <!-- Internet permission is required for calling the Open-Meteo APIs. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Used by BroadcastReceiver to check whether the phone is online or offline. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- Location permissions are required for the "Use GPS" weather feature. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!-- Android 13+ requires this permission before the app can show notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Camera permission and flash feature are used for the Torch Weather Alert demo. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera.flash"
+        android:required="false" />
 
     <application
         android:allowBackup="true"

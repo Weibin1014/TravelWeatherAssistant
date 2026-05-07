@@ -3,13 +3,22 @@ package hu.unideb.inf.travelweatherassistant;
 import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -63,7 +72,9 @@ import retrofit2.Response;
  * 3. Network/API: calls Open-Meteo APIs through WeatherRepository and Retrofit.
  * 4. Persistent storage: saves favorite cities into a Room database.
  * 5. Communication solution: shows Android notifications with travel advice.
- * 6. Creative extension: gives outfit advice based on the weather.
+ * 6. BroadcastReceiver: monitors network connection changes.
+ * 7. Torch/CameraManager: flashes the phone torch as a weather safety alert.
+ * 8. Creative extension: gives outfit advice based on the weather.
  *
  * The activity intentionally delegates API details to WeatherRepository and
  * weather-code logic to WeatherInterpreter/OutfitAdvisor, so the code is easier to explain.
@@ -89,6 +100,15 @@ public class MainActivity extends AppCompatActivity {
 
     // Room database operations must not run on the main UI thread.
     private final ExecutorService databaseExecutor = Executors.newSingleThreadExecutor();
+
+    // BroadcastReceiver listens for Android system broadcasts while the Activity is visible.
+    private BroadcastReceiver networkReceiver;
+    private boolean networkReceiverRegistered = false;
+
+    // CameraManager controls the device torch/flashlight for the weather alert demo.
+    private CameraManager cameraManager;
+    private String torchCameraId;
+    private final Handler torchHandler = new Handler(Looper.getMainLooper());
 
     // The app starts with Budapest as a default location before the user searches or uses GPS.
     private String currentCityName = "Budapest";
@@ -134,6 +154,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    /*
+     * Handles camera permission for the torch alert.
+     *
+     * The app only asks for this permission when the user presses the torch button,
+     * because the flashlight is an optional demonstration feature.
+     */
+    private final ActivityResultLauncher<String> cameraPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) {
+                    startTorchWeatherAlert();
+                } else {
+                    showStatus("Camera permission was denied. Torch alert cannot run.");
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -160,9 +195,28 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         setupFavoritesList();
+        setupNetworkReceiver();
+        setupTorch();
         createNotificationChannel();
         setupButtons();
         loadWeatherForCity(currentCityName, currentCountry, currentLatitude, currentLongitude);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // Register the receiver only while the screen is visible to avoid leaks.
+        registerNetworkReceiver();
+        updateNetworkStatus(isNetworkAvailable());
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        // Dynamic receivers should be unregistered when the Activity stops.
+        unregisterNetworkReceiver();
     }
 
     /*
@@ -215,6 +269,7 @@ public class MainActivity extends AppCompatActivity {
         binding.saveFavoriteButton.setOnClickListener(v -> saveCurrentCity());
         binding.refreshWeatherButton.setOnClickListener(v -> refreshCurrentWeather());
         binding.notifyButton.setOnClickListener(v -> requestNotificationAndShow());
+        binding.torchAlertButton.setOnClickListener(v -> requestTorchWeatherAlert());
 
         // Demo buttons reduce typing during the final presentation.
         binding.budapestButton.setOnClickListener(v ->
@@ -223,6 +278,178 @@ public class MainActivity extends AppCompatActivity {
                 loadDemoCity("Debrecen", "Hungary", 47.5316, 21.6273));
         binding.londonButton.setOnClickListener(v ->
                 loadDemoCity("London", "United Kingdom", 51.5072, -0.1276));
+    }
+
+    /*
+     * Creates the BroadcastReceiver used for the network-status feature.
+     *
+     * A BroadcastReceiver is an Android component that reacts to system or app
+     * messages. Here it listens for connectivity changes and updates the UI pill
+     * at the top of the screen.
+     */
+    private void setupNetworkReceiver() {
+        networkReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                updateNetworkStatus(isNetworkAvailable());
+            }
+        };
+    }
+
+    /*
+     * Registers the network BroadcastReceiver dynamically.
+     *
+     * Dynamic registration is a safe choice for this app because the receiver is
+     * only needed while MainActivity is open.
+     */
+    private void registerNetworkReceiver() {
+        if (networkReceiver == null || networkReceiverRegistered) {
+            return;
+        }
+
+        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(networkReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(networkReceiver, filter);
+        }
+        networkReceiverRegistered = true;
+    }
+
+    /*
+     * Unregisters the BroadcastReceiver when the Activity is no longer visible.
+     */
+    private void unregisterNetworkReceiver() {
+        if (!networkReceiverRegistered) {
+            return;
+        }
+
+        unregisterReceiver(networkReceiver);
+        networkReceiverRegistered = false;
+    }
+
+    /*
+     * Checks whether the phone currently has an internet-capable network.
+     *
+     * The app already uses the internet for Open-Meteo. This method makes that
+     * hidden dependency visible to the user and also demonstrates connectivity APIs.
+     */
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) {
+            return false;
+        }
+
+        Network activeNetwork = connectivityManager.getActiveNetwork();
+        if (activeNetwork == null) {
+            return false;
+        }
+
+        NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
+        return capabilities != null
+                && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    /*
+     * Updates the small network status view shown near the app header.
+     */
+    private void updateNetworkStatus(boolean online) {
+        if (online) {
+            binding.networkStatusTextView.setText("Network: online - weather API ready");
+        } else {
+            binding.networkStatusTextView.setText("Network: offline - saved cities still available");
+        }
+    }
+
+    /*
+     * Finds a camera that has a flashlight.
+     *
+     * CameraManager is a lower-level Android API. The app does not take photos;
+     * it only uses the torch mode of a camera with flash support.
+     */
+    private void setupTorch() {
+        cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        if (cameraManager == null) {
+            return;
+        }
+
+        try {
+            for (String cameraId : cameraManager.getCameraIdList()) {
+                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+                Boolean flashAvailable = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                if (Boolean.TRUE.equals(flashAvailable)) {
+                    torchCameraId = cameraId;
+                    return;
+                }
+            }
+        } catch (CameraAccessException ignored) {
+            // If the camera service cannot be reached, the app can still run without torch.
+        }
+    }
+
+    /*
+     * Starts the torch weather alert flow.
+     *
+     * The alert is manual on purpose: the app never turns on the flashlight by
+     * itself. The user presses the button during a demo or when they want a visual alert.
+     */
+    private void requestTorchWeatherAlert() {
+        if (torchCameraId == null) {
+            setupTorch();
+        }
+
+        if (torchCameraId == null) {
+            showStatus("No flashlight is available on this device.");
+            return;
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA);
+            return;
+        }
+
+        startTorchWeatherAlert();
+    }
+
+    /*
+     * Flashes the torch in a short pattern.
+     *
+     * This is connected to the weather app idea as a safety alert. For example,
+     * it could be used during rain, storm, fog or low visibility.
+     */
+    private void startTorchWeatherAlert() {
+        if (cameraManager == null || torchCameraId == null) {
+            showStatus("Torch alert is not available on this device.");
+            return;
+        }
+
+        showStatus("Torch weather alert flashing...");
+        torchHandler.removeCallbacksAndMessages(null);
+
+        boolean[] pattern = {true, false, true, false, true, false};
+        long delayMs = 0;
+        for (boolean state : pattern) {
+            final boolean torchOn = state;
+            torchHandler.postDelayed(() -> setTorchState(torchOn), delayMs);
+            delayMs += 280;
+        }
+        torchHandler.postDelayed(() -> showStatus("Torch weather alert finished."), delayMs + 80);
+    }
+
+    /*
+     * Safely changes the torch state.
+     */
+    private void setTorchState(boolean enabled) {
+        if (cameraManager == null || torchCameraId == null) {
+            return;
+        }
+
+        try {
+            cameraManager.setTorchMode(torchCameraId, enabled);
+        } catch (CameraAccessException | SecurityException ignored) {
+            showStatus("Unable to control the flashlight on this device.");
+        }
     }
 
     /*
@@ -748,6 +975,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        // Make sure the torch is off if the Activity is closed during the flash pattern.
+        torchHandler.removeCallbacksAndMessages(null);
+        setTorchState(false);
 
         // Stop the database thread when the Activity is destroyed.
         databaseExecutor.shutdown();

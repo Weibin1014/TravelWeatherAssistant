@@ -35,6 +35,20 @@
                 android:textColor="#E8F5FF"
                 android:textSize="15sp" />
 
+            <!-- BroadcastReceiver demo: this pill changes when the phone goes online/offline. -->
+            <TextView
+                android:id="@+id/networkStatusTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/input_surface"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp"
+                android:text="Network: checking connection..."
+                android:textColor="@color/ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
             <!-- Main weather card: city, icon, temperature, details and advice. -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -296,6 +310,18 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:text="Show weather notification"
+                android:textColor="#FFFFFF"
+                app:cornerRadius="18dp"
+                app:strokeColor="#FFFFFF" />
+
+            <!-- Torch demo: uses CameraManager to flash the device light as a safety alert. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/torchAlertButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Torch weather alert"
                 android:textColor="#FFFFFF"
                 app:cornerRadius="18dp"
                 app:strokeColor="#FFFFFF" />
