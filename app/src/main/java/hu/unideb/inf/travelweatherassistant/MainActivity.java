@@ -86,6 +86,11 @@ public class MainActivity extends AppCompatActivity {
     // A fixed id lets the app update/replace the same notification if needed.
     private static final int WEATHER_NOTIFICATION_ID = 101;
 
+    // Weather only needs city-level accuracy, so the GPS button can respond quickly.
+    private static final long LOCATION_TIMEOUT_MS = 3000;
+    private static final long RECENT_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
+    private static final float WEATHER_LOCATION_ACCURACY_METERS = 5000f;
+
     // ViewBinding gives type-safe access to XML views without using findViewById many times.
     private ActivityMainBinding binding;
 
@@ -543,9 +548,9 @@ public class MainActivity extends AppCompatActivity {
     /*
      * Reads the device location and loads weather for it.
      *
-     * The GPS button should not reuse the previously searched city. It first asks
-     * Android for a fresh location update. Only if that does not arrive quickly,
-     * the app falls back to a recent cached location.
+     * The GPS button should not reuse the previously searched city. It first tries
+     * a recent device location for speed, then asks Android for a fresh update if
+     * no good recent location is available.
      */
     private void loadWeatherFromDeviceLocation() {
         if (!hasLocationPermission()) {
@@ -559,17 +564,24 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        Location cachedLocation = getBestLastKnownLocation(locationManager);
+        if (cachedLocation != null && isWeatherLocationReady(cachedLocation)) {
+            showLoading(true, "Using recent device location...");
+            loadWeatherForResolvedLocation(cachedLocation);
+            return;
+        }
+
         requestSingleLocationUpdate(locationManager);
     }
 
     /*
-     * Finds the best cached location from all enabled providers.
+     * Finds the best recent cached location from all enabled providers.
      *
      * Android can have several providers, for example GPS_PROVIDER and NETWORK_PROVIDER.
-     * The smaller accuracy value means the location is more precise.
+     * For weather, a recent city-level location is more useful than an old but
+     * extremely precise location.
      */
     private Location getBestLastKnownLocation(LocationManager locationManager) {
-        // Try every enabled provider and keep the most accurate last known location.
         List<String> providers = locationManager.getProviders(true);
         Location bestLocation = null;
         for (String provider : providers) {
@@ -578,7 +590,7 @@ public class MainActivity extends AppCompatActivity {
                 return null;
             }
             Location location = locationManager.getLastKnownLocation(provider);
-            if (location != null && (bestLocation == null || location.getAccuracy() < bestLocation.getAccuracy())) {
+            if (location != null && isRecentLocation(location) && isBetterLocation(location, bestLocation)) {
                 bestLocation = location;
             }
         }
@@ -587,7 +599,7 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isRecentLocation(Location location) {
         long age = System.currentTimeMillis() - location.getTime();
-        return age >= 0 && age < 5 * 60 * 1000;
+        return location.getTime() == 0 || (age >= 0 && age < RECENT_LOCATION_MAX_AGE_MS);
     }
 
     private String[] knownEnglishLocationName(double latitude, double longitude) {
@@ -611,20 +623,33 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isFreshLocation(Location location) {
-        long age = System.currentTimeMillis() - location.getTime();
-        return location.getTime() == 0 || (age >= 0 && age < 2 * 60 * 1000);
+        return isRecentLocation(location);
+    }
+
+    private boolean isWeatherLocationReady(Location location) {
+        return isFreshLocation(location)
+                && (!location.hasAccuracy() || location.getAccuracy() <= WEATHER_LOCATION_ACCURACY_METERS);
     }
 
     private boolean isBetterLocation(Location newLocation, Location currentBest) {
         if (currentBest == null) {
             return true;
         }
+
+        // For weather, a clearly more accurate city-level position is usually
+        // better than simply preferring the GPS provider name.
+        if (newLocation.hasAccuracy() && currentBest.hasAccuracy()) {
+            float accuracyDifference = newLocation.getAccuracy() - currentBest.getAccuracy();
+            if (Math.abs(accuracyDifference) > 500) {
+                return accuracyDifference < 0;
+            }
+        } else if (newLocation.hasAccuracy() && !currentBest.hasAccuracy()) {
+            return true;
+        }
+
         if (LocationManager.GPS_PROVIDER.equals(newLocation.getProvider())
                 && !LocationManager.GPS_PROVIDER.equals(currentBest.getProvider())) {
             return true;
-        }
-        if (newLocation.hasAccuracy() && currentBest.hasAccuracy()) {
-            return newLocation.getAccuracy() < currentBest.getAccuracy();
         }
         return newLocation.getTime() > currentBest.getTime();
     }
@@ -683,16 +708,16 @@ public class MainActivity extends AppCompatActivity {
                 bestFreshLocation[0] = location;
             }
 
-            // Accurate GPS fixes are safe to use immediately; otherwise wait briefly
-            // for a potentially better provider before updating the weather card.
-            if (LocationManager.GPS_PROVIDER.equals(location.getProvider())
-                    && (!location.hasAccuracy() || location.getAccuracy() <= 100)) {
+            // Weather only needs city-level precision. Once a fresh location is
+            // accurate enough for weather, update the card immediately instead of
+            // waiting for a perfect GPS fix.
+            if (isWeatherLocationReady(location)) {
                 locationHandled[0] = true;
                 if (timeoutHolder[0] != null) {
                     handler.removeCallbacks(timeoutHolder[0]);
                 }
                 locationManager.removeUpdates(listenerHolder[0]);
-                showStatus("GPS location received.");
+                showStatus("Current location received.");
                 loadWeatherForResolvedLocation(location);
             }
         };
@@ -740,7 +765,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
-        handler.postDelayed(timeoutHolder[0], 10000);
+        handler.postDelayed(timeoutHolder[0], LOCATION_TIMEOUT_MS);
     }
 
     private void loadWeatherForResolvedLocation(Location location) {
